@@ -107,7 +107,7 @@ class BrevoFinisher extends AbstractFinisher implements LoggerAwareInterface
                 ->setUpdateEnabled(true)
                 ->setListIds($this->getEnrichedListIds())
                 ->setAttributes($this->getAttributes());
-            return $apiInstance->createContact($createContact)->getId();
+            return $apiInstance->createContact($createContact)?->getId() ?? 0;
 
         } catch (\Exception $exception) {
             // todo: should we forward it to the user?
