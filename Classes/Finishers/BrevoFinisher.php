@@ -51,7 +51,14 @@ class BrevoFinisher extends AbstractFinisher implements LoggerAwareInterface
             return;
         }
 
-        $this->addEntryToBrevo() ? $this->setFinisherSubscribedVariable(1) : $this->setFinisherSubscribedVariable(0);
+        $newContactId = $this->addEntryToBrevo();
+        if ($newContactId !== null) {
+            $this->setFinisherSubscribedVariable(1);
+        }
+        if ($newContactId > 0) {
+            $this->setFinisherNewContactIdVariable($newContactId);
+        }
+        $this->setFinisherSubscribedVariable(0);
     }
 
     protected function setFinisherSubscribedVariable(int $returnValue): void
@@ -63,7 +70,22 @@ class BrevoFinisher extends AbstractFinisher implements LoggerAwareInterface
         );
     }
 
-    protected function addEntryToBrevo(): bool
+    protected function setFinisherNewContactIdVariable(int $newContactId): void
+    {
+        $this->finisherContext->getFinisherVariableProvider()->add(
+            'brevo',
+            'data.newContactId',
+            $newContactId
+        );
+    }
+
+    /**
+     * Add the entry to Brevo.
+     * In case of active DOI, the contact is not created immediately, so no contact ID can be returned.
+     *
+     * @return int|null
+     */
+    protected function addEntryToBrevo(): int|null
     {
         try {
             $apiInstance = $this->getApi();
@@ -76,20 +98,21 @@ class BrevoFinisher extends AbstractFinisher implements LoggerAwareInterface
                     ->setAttributes($this->getAttributes())
                     ->setRedirectionUrl($this->getRedirectionUrl());
                 $apiInstance->createDoiContact($createContact);
-            } else {
-                $createContact = new CreateContact();
-                $createContact
-                    ->setEmail($this->parseOption('email'))
-                    ->setUpdateEnabled(true)
-                    ->setListIds($this->getEnrichedListIds())
-                    ->setAttributes($this->getAttributes());
-                $apiInstance->createContact($createContact);
+                return 0; // in case of DOI we cannot return the contact ID, because the contact is not created immediately
             }
-            return true;
+
+            $createContact = new CreateContact();
+            $createContact
+                ->setEmail($this->parseOption('email'))
+                ->setUpdateEnabled(true)
+                ->setListIds($this->getEnrichedListIds())
+                ->setAttributes($this->getAttributes());
+            return $apiInstance->createContact($createContact)->getId();
+
         } catch (\Exception $exception) {
             // todo: should we forward it to the user?
             $this->logger->error($exception->getMessage());
-            return false;
+            return null;
         }
     }
 
