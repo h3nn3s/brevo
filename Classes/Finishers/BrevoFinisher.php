@@ -23,6 +23,7 @@ use StudioMitte\Brevo\Configuration;
 use StudioMitte\Brevo\Events\FormFinisherAttributeEvent;
 use TYPO3\CMS\Core\EventDispatcher\EventDispatcher;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Core\Utility\MathUtility;
 use TYPO3\CMS\Form\Domain\Finishers\AbstractFinisher;
 
 /**
@@ -52,12 +53,14 @@ class BrevoFinisher extends AbstractFinisher implements LoggerAwareInterface
         }
 
         $newContactId = $this->addEntryToBrevo();
-        if ($newContactId !== null) {
+        if (MathUtility::canBeInterpretedAsInteger($newContactId)) {
             $this->setFinisherSubscribedVariable(1);
+            if ($newContactId > 0) {
+                $this->setFinisherNewContactIdVariable($newContactId);
+            }
+            return;
         }
-        if ($newContactId > 0) {
-            $this->setFinisherNewContactIdVariable($newContactId);
-        }
+
         $this->setFinisherSubscribedVariable(0);
     }
 
